@@ -11,7 +11,7 @@ class AIModel(ABC):
         pass
 
 class OpenAIModel(AIModel):
-    """OpenAI API implementation"""
+    """OpenAI implementation"""
     def __init__(self, api_key: str):
         import json
         from openai import OpenAI
@@ -32,7 +32,7 @@ class OpenAIModel(AIModel):
         return response.choices[0].message.content
 
 class GeminiModel(AIModel):
-    """Google's Gemini API"""
+    """Google's Gemini"""
     def __init__(self, api_key: str):
         import json
         with open('configs/gemini_config.json') as config_file:
@@ -50,6 +50,31 @@ class GeminiModel(AIModel):
         )
         response = response.send_message(prompt)
         return response.text
+
+class DeepseekModel(AIModel):
+    """Deepseek API implementation"""
+    def __init__(self, api_key: str):
+        import json
+        from openai import OpenAI
+        with open('configs/deepseek_config.json') as config_file:
+            config = json.load(config_file)
+            self.client = OpenAI(
+                api_key=api_key,
+                base_url="https://api.deepseek.com/v1"  # DeepSeek's API endpoint
+            )
+            self.model = config.get('model')
+            self.kwargs = config.get('kwargs')
+
+    async def generate_response(self, prompt: str) -> str:
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            **self.kwargs
+        )
+        return response.choices[0].message.content
 
 class Prompt:
     def __init__(self, url: str):
@@ -80,10 +105,15 @@ async def main():
 
     models = [
         OpenAIModel(
-        api_key=os.getenv("OPENAI_API_KEY")
-    ), GeminiModel(
-        api_key=os.getenv("GEMINI_API_KEY")
-    )]
+            api_key=os.getenv("OPENAI_API_KEY")
+        ),
+        GeminiModel(
+            api_key=os.getenv("GEMINI_API_KEY")
+        ),
+        DeepseekModel(
+            api_key=os.getenv("DEEPSEEK_API_KEY")
+        )
+    ]
 
     for model in models:
         # Generate responses in independent .txt files
