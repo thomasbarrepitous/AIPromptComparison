@@ -76,6 +76,31 @@ class DeepseekModel(AIModel):
         )
         return response.choices[0].message.content
 
+class MistralModel(AIModel):
+    """Mistral API implementation"""
+    def __init__(self, api_key: str):
+        import json
+        from openai import OpenAI
+        with open('configs/mistral_config.json') as config_file:
+            config = json.load(config_file)
+            self.client = OpenAI(
+                api_key=api_key,
+                base_url="https://api.mistral.ai/v1"  # Mistral's API endpoint
+            )
+            self.model = config.get('model')
+            self.kwargs = config.get('kwargs')
+
+    async def generate_response(self, prompt: str) -> str:
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            **self.kwargs
+        )
+        return response.choices[0].message.content
+
 class Prompt:
     def __init__(self, url: str):
         self.get_text(url)
@@ -112,6 +137,9 @@ async def main():
         ),
         DeepseekModel(
             api_key=os.getenv("DEEPSEEK_API_KEY")
+        ),
+        MistralModel(
+            api_key=os.getenv("MISTRAL_API_KEY")
         )
     ]
 
