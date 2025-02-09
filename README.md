@@ -2,6 +2,8 @@
 
 A lightweight framework for testing and comparing AI model responses to the same prompt.
 
+https://github.com/user-attachments/assets/21df91e9-d69e-47aa-98c4-22df7d69b65b
+
 ## Project Structure
 
 - **prompt_testing.py**: Main script for running the prompt tester
