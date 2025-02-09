@@ -101,6 +101,16 @@ app.layout = html.Div([
         html.Div([
             html.H2("Model Parameters", className='text-2xl font-bold text-gray-800 mb-6'),
             
+            # Loading Spinner
+            dcc.Loading(
+                id="loading-spinner",
+                type="circle",
+                children=[
+                    html.Div(id="loading-output-container", className='text-center text-sm text-gray-600 mb-4')
+                ],
+                className='mb-4'
+            ),
+            
             # Tabs for different models
             dcc.Tabs([
                 # OpenAI Tab
@@ -113,6 +123,16 @@ app.layout = html.Div([
                             id='openai-model-dropdown',
                             options=MODEL_OPTIONS['openai'],
                             value='gpt-3.5-turbo',
+                            className='mb-4'
+                        ),
+                        html.Label("Response Format:", className='block text-sm font-medium text-gray-700'),
+                        dcc.Dropdown(
+                            id='openai-response-format-dropdown',
+                            options=[
+                                {'label': 'Text', 'value': 'text'},
+                                {'label': 'JSON', 'value': 'json_object'}
+                            ],
+                            value='text',
                             className='mb-4'
                         ),
                         html.Label("Temperature:", className='block text-sm font-medium text-gray-700'),
@@ -128,6 +148,30 @@ app.layout = html.Div([
                             id='openai-max-tokens-slider',
                             min=100, max=2000, step=100, value=1000,
                             marks={i: str(i) for i in range(0, 2001, 500)},
+                            tooltip={"placement": "bottom", "always_visible": True},
+                            className='mb-6'
+                        ),
+                        html.Label("Top P:", className='block text-sm font-medium text-gray-700'),
+                        dcc.Slider(
+                            id='openai-top-p-slider',
+                            min=0, max=1, step=0.1, value=1.0,
+                            marks={i/10: str(i/10) for i in range(11)},
+                            tooltip={"placement": "bottom", "always_visible": True},
+                            className='mb-6'
+                        ),
+                        html.Label("Frequency Penalty:", className='block text-sm font-medium text-gray-700'),
+                        dcc.Slider(
+                            id='openai-frequency-penalty-slider',
+                            min=0, max=2, step=0.1, value=0.0,
+                            marks={i/2: str(i/2) for i in range(5)},
+                            tooltip={"placement": "bottom", "always_visible": True},
+                            className='mb-6'
+                        ),
+                        html.Label("Presence Penalty:", className='block text-sm font-medium text-gray-700'),
+                        dcc.Slider(
+                            id='openai-presence-penalty-slider',
+                            min=0, max=2, step=0.1, value=0.0,
+                            marks={i/2: str(i/2) for i in range(5)},
                             tooltip={"placement": "bottom", "always_visible": True},
                             className='mb-4'
                         )
@@ -257,19 +301,22 @@ app.layout = html.Div([
                     className='w-full h-32 p-4 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 mb-4'
                 ),
                 html.Div([
-                    html.Button(
-                        'Run Models', 
-                        id='submit-button', 
-                        n_clicks=0,
-                        className=BUTTON_STYLES['primary']
-                    ),
-                    html.Button(
-                        'Clear All', 
-                        id='clear-button', 
-                        n_clicks=0,
-                        className=BUTTON_STYLES['secondary'] + ' ml-4'
-                    )
-                ], className='flex justify-end space-x-4')
+                    html.Div(id='running-status', className='text-sm text-gray-600 mr-4'),
+                    html.Div([
+                        html.Button(
+                            'Run Models', 
+                            id='submit-button', 
+                            n_clicks=0,
+                            className=BUTTON_STYLES['primary']
+                        ),
+                        html.Button(
+                            'Clear All', 
+                            id='clear-button', 
+                            n_clicks=0,
+                            className=BUTTON_STYLES['secondary'] + ' ml-4'
+                        )
+                    ])
+                ], className='flex justify-between items-center')
             ], className='bg-white rounded-lg shadow-card p-6 mb-6'),
             
             # Model Comparison Section
@@ -356,6 +403,8 @@ app.layout = html.Div([
 # Callbacks
 @callback(
     [Output('loading-output', 'children'),
+     Output('loading-output-container', 'children'),
+     Output('running-status', 'children'),
      Output('model1-dropdown', 'options'),
      Output('model2-dropdown', 'options'),
      Output('model1-dropdown', 'value'),
@@ -369,12 +418,16 @@ app.layout = html.Div([
     [State('prompt-input', 'value'),
      # Model selections
      State('openai-model-dropdown', 'value'),
+     State('openai-response-format-dropdown', 'value'),
      State('gemini-model-dropdown', 'value'),
      State('deepseek-model-dropdown', 'value'),
      State('mistral-model-dropdown', 'value'),
      # Parameters
      State('openai-temperature-slider', 'value'),
      State('openai-max-tokens-slider', 'value'),
+     State('openai-top-p-slider', 'value'),
+     State('openai-frequency-penalty-slider', 'value'),
+     State('openai-presence-penalty-slider', 'value'),
      State('gemini-temperature-slider', 'value'),
      State('gemini-max-tokens-slider', 'value'),
      State('deepseek-temperature-slider', 'value'),
@@ -384,8 +437,8 @@ app.layout = html.Div([
     prevent_initial_call=True
 )
 def update_all(n_clicks, model1_current, model2_current, prompt,
-               openai_model, gemini_model, deepseek_model, mistral_model,
-               openai_temp, openai_max_tokens,
+               openai_model, openai_response_format, gemini_model, deepseek_model, mistral_model,
+               openai_temp, openai_max_tokens, openai_top_p, openai_freq_penalty, openai_pres_penalty,
                gemini_temp, gemini_max_tokens,
                deepseek_temp, deepseek_max_tokens,
                mistral_temp, mistral_max_tokens):
@@ -395,6 +448,8 @@ def update_all(n_clicks, model1_current, model2_current, prompt,
 
     # Initialize default values
     loading_output = "Ready"
+    loading_spinner = ""
+    running_status = ""
     available_models = get_available_models()
     options = [{'label': model, 'value': model} for model in available_models]
     model1_value = model1_current
@@ -429,11 +484,23 @@ def update_all(n_clicks, model1_current, model2_current, prompt,
                     html.Span("Model: ", className="text-gray-500"),
                     html.Span(openai_model, className="font-medium"),
                     html.Br(),
+                    html.Span("Response Format: ", className="text-gray-500"),
+                    html.Span(openai_response_format.replace('_', ' ').title(), className="font-medium"),
+                    html.Br(),
                     html.Span("Temperature: ", className="text-gray-500"),
                     html.Span(f"{openai_temp:.1f}", className="font-medium"),
                     html.Br(),
                     html.Span("Max Tokens: ", className="text-gray-500"),
                     html.Span(str(openai_max_tokens), className="font-medium"),
+                    html.Br(),
+                    html.Span("Top P: ", className="text-gray-500"),
+                    html.Span(f"{openai_top_p:.1f}", className="font-medium"),
+                    html.Br(),
+                    html.Span("Frequency Penalty: ", className="text-gray-500"),
+                    html.Span(f"{openai_freq_penalty:.1f}", className="font-medium"),
+                    html.Br(),
+                    html.Span("Presence Penalty: ", className="text-gray-500"),
+                    html.Span(f"{openai_pres_penalty:.1f}", className="font-medium"),
                 ], className="pl-4")
             ], className="mb-3"),
             
@@ -486,6 +553,15 @@ def update_all(n_clicks, model1_current, model2_current, prompt,
 
     # If the trigger was the submit button
     if trigger_id == 'submit-button' and n_clicks and prompt:
+        loading_output = "Running models..."
+        loading_spinner = "Processing prompt with all models..."
+        running_status = html.Div([
+            html.Span("Running Models ", className="animate-pulse"),
+            html.Div(className="inline-block w-2 h-2 bg-primary-500 rounded-full animate-bounce mx-0.5"),
+            html.Div(className="inline-block w-2 h-2 bg-primary-500 rounded-full animate-bounce mx-0.5 delay-100"),
+            html.Div(className="inline-block w-2 h-2 bg-primary-500 rounded-full animate-bounce mx-0.5 delay-200")
+        ], className="flex items-center")
+
         # Update model configurations with selected models
         model_configs = {
             'openai_config.json': {
@@ -493,10 +569,11 @@ def update_all(n_clicks, model1_current, model2_current, prompt,
                 "kwargs": {
                     "temperature": openai_temp,
                     "max_tokens": openai_max_tokens,
-                    "top_p": 1.0,
-                    "frequency_penalty": 0.0,
-                    "presence_penalty": 0.0,
-                    "stream": False
+                    "top_p": openai_top_p,
+                    "frequency_penalty": openai_freq_penalty,
+                    "presence_penalty": openai_pres_penalty,
+                    "stream": False,
+                    "response_format": {"type": openai_response_format} if openai_response_format == 'json_object' else None
                 }
             },
             'gemini_config.json': {
@@ -564,8 +641,15 @@ def update_all(n_clicks, model1_current, model2_current, prompt,
         # Run the async function
         asyncio.run(run_all_models())
         
-        # Update values after running models
+        # After running models
         loading_output = "Models run complete!"
+        loading_spinner = "All models have finished processing!"
+        running_status = html.Div([
+            html.Span("Complete ", className="text-green-600 font-medium"),
+            html.Span("✓", className="text-green-500 text-lg")
+        ], className="flex items-center")
+        
+        # Update values after running models
         available_models = get_available_models()
         options = [{'label': model, 'value': model} for model in available_models]
         
@@ -584,6 +668,8 @@ def update_all(n_clicks, model1_current, model2_current, prompt,
 
     return (
         loading_output,
+        loading_spinner,
+        running_status,
         options,
         options,
         model1_value,
