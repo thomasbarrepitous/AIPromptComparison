@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for Dash components */
+.dash-dropdown {
+    width: 100% !important;
+}
+
+.dash-dropdown .Select-control {
+    @apply bg-white border border-gray-300 rounded-lg shadow-sm transition-colors;
+    width: 100% !important;
+}
+
+.dash-dropdown .Select {
+    width: 100% !important;
+}
+
+.dash-dropdown .Select-menu-outer {
+    @apply bg-white border border-gray-300 rounded-lg shadow-lg mt-1;
+    width: 100% !important;
+    min-width: 100% !important;
+}
+
+.dash-dropdown .Select-menu {
+    width: 100% !important;
+}
+
+.dash-dropdown .Select-value {
+    width: calc(100% - 20px) !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dash-dropdown .Select-option {
+    @apply px-4 py-2 hover:bg-gray-100 cursor-pointer;
+}
+
+.dash-dropdown .Select-option.is-selected {
+    @apply bg-primary-50 text-primary-700;
+}
+
+/* Custom tabs styling */
+.custom-tab {
+    @apply text-sm text-gray-600 hover:text-gray-800 border-b-2 border-transparent;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.custom-tab--selected {
+    @apply text-primary-600 border-primary-500 font-medium;
+}
+
+.custom-tabs-container {
+    @apply border-b border-gray-200;
+}
+
+/* Override Dash's default tab styles */
+.dash-tab {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Slider customization */
+.rc-slider {
+    @apply my-6;
+}
+
+.rc-slider-rail {
+    @apply bg-gray-200;
+}
+
+.rc-slider-track {
+    @apply bg-primary-500;
+}
+
+.rc-slider-handle {
+    @apply border-2 border-primary-500 bg-white shadow-sm;
+}
+
+.rc-slider-handle:hover {
+    @apply border-primary-600;
+}
+
+.rc-slider-handle:active {
+    @apply border-primary-700 shadow-md;
+}
+
+/* Loading animation */
+._dash-loading {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+}
+
+._dash-loading::after {
+    content: "";
+    @apply w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin;
+}
+
+/* Scrollbar styling */
+.overflow-auto {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.gray.400') theme('colors.gray.200');
+}
+
+.overflow-auto::-webkit-scrollbar {
+    @apply w-2;
+}
+
+.overflow-auto::-webkit-scrollbar-track {
+    @apply bg-gray-200 rounded-full;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded-full hover:bg-gray-500;
+}
+
+.dash-slider {
+    @apply w-full;
+}
+
+.dash-textarea {
+    @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500;
+} 
